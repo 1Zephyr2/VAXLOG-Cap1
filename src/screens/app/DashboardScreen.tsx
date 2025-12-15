@@ -13,14 +13,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../../context/family-context';
+import { useAuth } from '../../context/auth-context';
 import { useTheme } from '../../context/theme-context';
+import { useNotifications } from '../../context/notifications-context';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
 
 export default function DashboardScreen({ navigation }: any) {
   const { familyMembers } = useFamily();
+  const { user } = useAuth();
   const { theme } = useTheme();
+  const { unreadCount } = useNotifications();
   const mainUser = familyMembers.find((m) => m.relationship === 'Me');
   const [showDoseModal, setShowDoseModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
@@ -138,15 +142,15 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.userSection}>
           <TouchableOpacity 
             style={styles.avatarContainer}
-            onPress={() => mainUser && navigation.navigate('MemberProfile', { memberId: mainUser.id })}
+            onPress={() => navigation.navigate('EditProfile')}
           >
             <Image 
-              source={{ uri: mainUser?.avatarUrl || 'https://via.placeholder.com/150' }} 
+              source={{ uri: user?.avatarUrl || 'https://via.placeholder.com/150' }} 
               style={styles.avatar}
             />
           </TouchableOpacity>
           <View style={styles.userInfo}>
-            <Text style={[styles.userName, { color: theme.colors.text }]}>Hi, {mainUser?.name || 'User'}!</Text>
+            <Text style={[styles.userName, { color: theme.colors.text }]}>Hi, {user?.name || 'User'}!</Text>
             <Text style={[styles.userSubtext, { color: theme.colors.textSecondary }]}>Stay healthy & protected</Text>
           </View>
         </View>
@@ -156,15 +160,15 @@ export default function DashboardScreen({ navigation }: any) {
             onPress={() => navigation.navigate('Notifications')}
           >
             <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
-            {upcomingAppointments.length > 0 && (
+            {unreadCount > 0 && (
               <View style={styles.notificationBadge}>
-                <Text style={styles.badgeCount}>{upcomingAppointments.length}</Text>
+                <Text style={styles.badgeCount}>{unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.iconButton, { backgroundColor: theme.colors.iconBackground }]}
-            onPress={() => mainUser && navigation.navigate('MemberProfile', { memberId: mainUser.id })}
+            onPress={() => navigation.navigate('EditProfile')}
           >
             <Ionicons name="person-outline" size={24} color={theme.colors.text} />
           </TouchableOpacity>

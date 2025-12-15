@@ -9,6 +9,7 @@ import { ThemeProvider, useTheme } from './src/context/theme-context';
 import { AuthProvider, useAuth } from './src/context/auth-context';
 import { NotificationsProvider } from './src/context/notifications-context';
 import { AppointmentsProvider } from './src/context/appointments-context';
+import { StaffPatientsProvider } from './src/context/staff-patients-context';
 
 // Auth Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -137,7 +138,9 @@ export default function App() {
         <NotificationsProvider>
           <AppointmentsProvider>
             <FamilyProvider>
-              <AppNavigator />
+              <StaffPatientsProvider>
+                <AppNavigator />
+              </StaffPatientsProvider>
             </FamilyProvider>
           </AppointmentsProvider>
         </NotificationsProvider>

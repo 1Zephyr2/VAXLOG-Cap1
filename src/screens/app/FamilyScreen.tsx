@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../../context/family-context';
+import { useAuth } from '../../context/auth-context';
 import { useTheme } from '../../context/theme-context';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
 
 export default function FamilyScreen({ navigation }: any) {
   const { familyMembers } = useFamily();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -47,24 +49,22 @@ export default function FamilyScreen({ navigation }: any) {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Main User Card */}
-        {mainUser && (
+        {/* Account Owner Section */}
+        {user && (
           <View style={styles.mainUserSection}>
             <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Account Owner</Text>
             <TouchableOpacity
               style={[styles.mainUserCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.primary }]}
-              onPress={() =>
-                navigation.navigate('MemberProfile', { memberId: mainUser.id })
-              }
+              onPress={() => navigation.navigate('EditProfile')}
             >
               <View style={styles.mainUserContent}>
                 <View style={styles.mainAvatarContainer}>
-                  {mainUser.avatarUrl ? (
-                    <Image source={{ uri: mainUser.avatarUrl }} style={styles.mainAvatar} />
+                  {user.avatarUrl ? (
+                    <Image source={{ uri: user.avatarUrl }} style={styles.mainAvatar} />
                   ) : (
                     <View style={[styles.mainAvatar, styles.avatarPlaceholder]}>
                       <Text style={styles.mainAvatarText}>
-                        {mainUser.name.charAt(0).toUpperCase()}
+                        {user.name.charAt(0).toUpperCase()}
                       </Text>
                     </View>
                   )}
@@ -74,22 +74,15 @@ export default function FamilyScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.mainUserInfo}>
-                  <Text style={[styles.mainUserName, { color: theme.colors.text }]}>{mainUser.name}</Text>
+                  <Text style={[styles.mainUserName, { color: theme.colors.text }]}>{user.name}</Text>
                   <Text style={[styles.mainUserDetails, { color: theme.colors.textSecondary }]}>
-                    {mainUser.age} years old • {mainUser.email}
+                    {user.email}
                   </Text>
                   <View style={styles.mainStatusContainer}>
-                    {mainUser.isFullyVaccinated ? (
-                      <View style={[styles.badge, styles.vaccinated]}>
-                        <Ionicons name="checkmark-circle" size={14} color="#15803d" />
-                        <Text style={styles.badgeTextGreen}>Fully Vaccinated</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.badge, styles.pending]}>
-                        <Ionicons name="time" size={14} color="#b45309" />
-                        <Text style={styles.badgeTextOrange}>Pending</Text>
-                      </View>
-                    )}
+                    <View style={[styles.badge, styles.verified]}>
+                      <Ionicons name="checkmark-circle" size={14} color="#15803d" />
+                      <Text style={styles.badgeTextGreen}>Account Owner</Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -98,7 +91,7 @@ export default function FamilyScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* Other Family Members */}
+        {/* Family Members Section */}
         {familyMembers.filter((m) => m.relationship !== 'Me').length > 0 && (
           <View style={styles.familyMembersSection}>
             <View style={styles.sectionHeaderRow}>
@@ -431,6 +424,9 @@ const styles = StyleSheet.create({
   },
   pending: {
     backgroundColor: '#fef3c7',
+  },
+  verified: {
+    backgroundColor: '#dcfce7',
   },
   badgeTextGreen: {
     fontSize: 11,

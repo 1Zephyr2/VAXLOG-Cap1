@@ -23,6 +23,9 @@ export type FamilyMember = {
   } | null;
   avatarUrl: string;
   vaccineHistory: Vaccine[];
+  linkedAccountEmail?: string; // Email of the registered account (for family grouping)
+  familyGroupId?: string; // ID to group family members together
+  createdAt?: string; // Timestamp when the patient was added
 };
 
 export type Notification = {

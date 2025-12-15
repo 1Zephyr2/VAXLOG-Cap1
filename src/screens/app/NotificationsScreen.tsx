@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,16 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 export default function NotificationsScreen() {
   const { familyMembers } = useFamily();
   const { theme } = useTheme();
-  const { notifications: staffNotifications } = useNotifications();
+  const { notifications: staffNotifications, markAsRead } = useNotifications();
+
+  // Mark all unread notifications as read when screen is opened
+  useEffect(() => {
+    staffNotifications.forEach(notification => {
+      if (!notification.isRead) {
+        markAsRead(notification.id);
+      }
+    });
+  }, []);
 
   // Auto-generated notifications from upcoming vaccines
   const autoNotifications = familyMembers

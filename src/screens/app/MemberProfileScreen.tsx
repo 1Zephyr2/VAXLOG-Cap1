@@ -60,23 +60,27 @@ export default function MemberProfileScreen({ route, navigation }: any) {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Send', 
-          onPress: () => {
-            // Add in-app notification
-            if (member?.nextDose) {
-              addNotification({
-                memberName: patientName || '',
-                message: isOwner 
-                  ? `Reminder: Your ${member.nextDose.vaccine} is scheduled for ${member.nextDose.date}`
-                  : `Reminder: ${patientName}'s ${member.nextDose.vaccine} is scheduled for ${member.nextDose.date}`,
-                date: new Date().toISOString().split('T')[0],
-                type: 'Reminder',
-              });
+          onPress: async () => {
+            try {
+              // Add in-app notification
+              if (member?.nextDose) {
+                await addNotification({
+                  memberName: patientName || '',
+                  message: isOwner 
+                    ? `Reminder: Your ${member.nextDose.vaccine} is scheduled for ${member.nextDose.date}`
+                    : `Reminder: ${patientName}'s ${member.nextDose.vaccine} is scheduled for ${member.nextDose.date}`,
+                  date: new Date().toISOString().split('T')[0],
+                  type: 'Reminder',
+                });
+              }
+              
+              Alert.alert(
+                'Success', 
+                `Reminder sent to ${isOwner ? patientName : ownerName}!\n\n✓ Email notification sent\n✓ In-app notification added`
+              );
+            } catch (error) {
+              Alert.alert('Error', 'Failed to send reminder');
             }
-            
-            Alert.alert(
-              'Success', 
-              `Reminder sent to ${isOwner ? patientName : ownerName}!\n\n✓ Email notification sent\n✓ In-app notification added`
-            );
           },
         },
       ]

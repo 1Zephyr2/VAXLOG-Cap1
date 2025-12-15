@@ -10,16 +10,21 @@ import {
   StatusBar,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useFamily } from '../../context/family-context';
+import { useAuth } from '../../context/auth-context';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
 
 export default function AddFamilyMemberScreen({ navigation }: any) {
   const { familyMembers, setFamilyMembers } = useFamily();
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [birthdate, setBirthdate] = useState('');
   const [relationship, setRelationship] = useState('');
@@ -34,6 +39,7 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
   
   // Dropdown state
   const [showRelationshipDropdown, setShowRelationshipDropdown] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState({
@@ -120,7 +126,19 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
   };
 
   const handleBirthdateChange = (value: string) => {
-    // Auto-format with dashes as user types
+    // Smart auto-format: add dashes when typing forward, but allow deletion
+    const prevLength = birthdate.length;
+    const currLength = value.length;
+    const isDeleting = currLength < prevLength;
+    
+    // If deleting, just update the value
+    if (isDeleting) {
+      setBirthdate(value);
+      setErrors((prev) => ({ ...prev, birthdate: validateBirthdate(value) }));
+      return;
+    }
+    
+    // If adding characters, auto-add dashes at appropriate positions
     let formatted = value.replace(/\D/g, ''); // Remove all non-digits
     
     if (formatted.length >= 4) {
@@ -199,13 +217,20 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
     setMedicalDocuments(medicalDocuments.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate all fields
     const nameError = validateName(name);
     const birthdateError = validateBirthdate(birthdate);
     const relationshipError = validateRelationship(relationship);
-    const phoneError = validatePhone(phone);
-    const emailError = validateEmail(email);
+    
+    // Calculate age to determine if phone/email validation is needed
+    const birthYear = parseInt(birthdate.split('-')[0]);
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
+    
+    // Only validate phone/email for adults (18+)
+    const phoneError = age >= 18 ? validatePhone(phone) : '';
+    const emailError = age >= 18 ? validateEmail(email) : '';
 
     setErrors({
       name: nameError,
@@ -221,37 +246,55 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
       return;
     }
 
-    const birthYear = parseInt(birthdate.split('-')[0]);
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - birthYear;
-
     // Check if ID is required for 18+
     if (age >= 18 && !idDocument) {
       Alert.alert('ID Required', 'Please upload a valid ID for members 18 years or older');
       return;
     }
 
-    const newMember = {
-      id: `member-${Date.now()}`,
-      name,
-      birthdate,
-      age,
-      gender,
-      relationship,
-      phone,
-      email,
-      isFullyVaccinated: false,
-      nextDose: null,
-      avatarUrl: avatarImage,
-      vaccineHistory: [],
-      documents: {
-        idDocument: idDocument,
-        medicalDocuments: medicalDocuments,
-      },
-    };
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to add family members');
+      return;
+    }
 
-    setFamilyMembers([...familyMembers, newMember]);
-    navigation.goBack();
+    setIsSaving(true);
+    try {
+      const newMember = {
+        userId: user.id,
+        name,
+        birthdate,
+        age,
+        gender,
+        relationship,
+        phone: age >= 18 ? phone : '',
+        email: age >= 18 ? email : '',
+        isFullyVaccinated: false,
+        avatarUrl: avatarImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=6366f1`,
+        vaccineHistory: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to Firestore
+      const docRef = await addDoc(collection(db, 'familyMembers'), newMember);
+
+      // Update local state with the new member including Firestore ID
+      const memberWithId = {
+        ...newMember,
+        id: docRef.id,
+      };
+
+      setFamilyMembers([...familyMembers, memberWithId]);
+      
+      Alert.alert('Success', 'Family member added successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error: any) {
+      console.error('Error adding family member:', error);
+      Alert.alert('Error', 'Failed to add family member. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -357,30 +400,38 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={[styles.input, errors.phone && styles.inputError]}
-              placeholder="555-1234"
-              value={phone}
-              onChangeText={handlePhoneChange}
-              keyboardType="phone-pad"
-            />
-            {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
-          </View>
+          {/* Only show phone and email for adults (18+) */}
+          {birthdate && (() => {
+            const age = new Date().getFullYear() - parseInt(birthdate.split('-')[0]);
+            return age >= 18;
+          })() && (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone</Text>
+                <TextInput
+                  style={[styles.input, errors.phone && styles.inputError]}
+                  placeholder="555-1234"
+                  value={phone}
+                  onChangeText={handlePhoneChange}
+                  keyboardType="phone-pad"
+                />
+                {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+              </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder="email@example.com"
-              value={email}
-              onChangeText={handleEmailChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-          </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  placeholder="email@example.com"
+                  value={email}
+                  onChangeText={handleEmailChange}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+              </View>
+            </>
+          )}
 
           {/* Avatar Upload */}
           <View style={styles.inputGroup}>
@@ -457,12 +508,16 @@ export default function AddFamilyMemberScreen({ navigation }: any) {
           <TouchableOpacity 
             style={[
               styles.submitButton, 
-              (errors.name || errors.birthdate || errors.relationship || errors.phone || errors.email || !name || !birthdate || !relationship) && styles.submitButtonDisabled
+              (isSaving || errors.name || errors.birthdate || errors.relationship || errors.phone || errors.email || !name || !birthdate || !relationship) && styles.submitButtonDisabled
             ]} 
             onPress={handleSubmit}
-            disabled={!!(errors.name || errors.birthdate || errors.relationship || errors.phone || errors.email || !name || !birthdate || !relationship)}
+            disabled={isSaving || !!(errors.name || errors.birthdate || errors.relationship || errors.phone || errors.email || !name || !birthdate || !relationship)}
           >
-            <Text style={styles.submitButtonText}>Add Family Member</Text>
+            {isSaving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Add Family Member</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

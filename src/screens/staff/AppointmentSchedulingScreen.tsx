@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/theme-context';
-import { useFamily } from '../../context/family-context';
+import { useStaffPatients } from '../../context/staff-patients-context';
 import { useAppointments } from '../../context/appointments-context';
 import { format, addDays, startOfWeek, getDaysInMonth, getDay, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -22,7 +22,9 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 
 export default function AppointmentSchedulingScreen({ navigation }: any) {
   const { theme } = useTheme();
-  const { familyMembers, setFamilyMembers } = useFamily();
+  const { staffPatients, updateStaffPatient } = useStaffPatients();
+  // Use staffPatients as familyMembers for compatibility
+  const familyMembers = staffPatients;
   const { appointments, addAppointment, cancelAppointment, completeAppointment } = useAppointments();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -130,7 +132,7 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
     setExpandedFamilies(new Set());
   };
 
-  const handleSaveAppointment = () => {
+  const handleSaveAppointment = async () => {
     // Validation
     const errors = [];
     
@@ -158,9 +160,8 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
     // Format time in 24-hour format
     const formattedTime = `${selectedHour}:${selectedMinute}`;
     
-    // Create new appointment
+    // Create new appointment (without id - Firebase will generate it)
     const newAppointment = {
-      id: Date.now().toString(),
       patientId: patient.id,
       patientName: selectedPatient,
       vaccine: selectedVaccine,
@@ -169,38 +170,37 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
       status: 'scheduled' as const,
     };
 
-    // Add appointment to appointments context
-    addAppointment(newAppointment);
+    try {
+      // Add appointment to Firestore
+      await addAppointment(newAppointment);
     
-    // Add vaccine to patient's vaccine history as "Upcoming"
-    const updatedFamilyMembers = familyMembers.map(member => {
-      if (member.id === patient.id) {
-        return {
-          ...member,
-          vaccineHistory: [
-            ...member.vaccineHistory,
-            {
-              name: selectedVaccine,
-              dose: 'Dose 1',
-              date: format(selectedDate, 'yyyy-MM-dd'),
-              status: 'Upcoming' as const,
-            }
-          ]
-        };
-      }
-      return member;
-    });
+      // Add vaccine to patient's vaccine history as "Upcoming"
+      const updatedVaccineHistory = [
+        ...patient.vaccineHistory,
+        {
+          name: selectedVaccine,
+          dose: 'Dose 1',
+          date: format(selectedDate, 'yyyy-MM-dd'),
+          status: 'Upcoming' as const,
+        }
+      ];
 
-    setFamilyMembers(updatedFamilyMembers);
-    
-    Alert.alert('Success', `Appointment booked for ${selectedPatient}\n${selectedVaccine} at ${formattedTime}\n${format(selectedDate, 'MMMM d, yyyy')}`);
-    setShowBookingModal(false);
-    setSelectedPatient('');
-    setSelectedVaccine('');
-    setSelectedHour('08');
-    setSelectedMinute('00');
-    setPatientSearchQuery('');
-    setExpandedFamilies(new Set());
+      await updateStaffPatient(patient.id, {
+        vaccineHistory: updatedVaccineHistory
+      });
+      
+      Alert.alert('Success', `Appointment booked for ${selectedPatient}\n${selectedVaccine} at ${formattedTime}\n${format(selectedDate, 'MMMM d, yyyy')}`);
+      setShowBookingModal(false);
+      setSelectedPatient('');
+      setSelectedVaccine('');
+      setSelectedHour('08');
+      setSelectedMinute('00');
+      setPatientSearchQuery('');
+      setExpandedFamilies(new Set());
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      Alert.alert('Error', 'Failed to book appointment. Please try again.');
+    }
   };
 
   const handleCancelAppointment = (appointment: any) => {
@@ -212,9 +212,13 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
         { 
           text: 'Yes', 
           style: 'destructive', 
-          onPress: () => {
-            cancelAppointment(appointment.id);
-            Alert.alert('Success', 'Appointment cancelled');
+          onPress: async () => {
+            try {
+              await cancelAppointment(appointment.id);
+              Alert.alert('Success', 'Appointment cancelled');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to cancel appointment');
+            }
           }
         },
       ]
@@ -229,9 +233,13 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Complete', 
-          onPress: () => {
-            completeAppointment(appointment.id);
-            Alert.alert('Success', 'Appointment marked as completed');
+          onPress: async () => {
+            try {
+              await completeAppointment(appointment.id);
+              Alert.alert('Success', 'Appointment marked as completed');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to complete appointment');
+            }
           }
         },
       ]
@@ -839,6 +847,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+  },
+  statsContainer: {
+    marginBottom: 20,
   },
   statsRow: {
     flexDirection: 'row',

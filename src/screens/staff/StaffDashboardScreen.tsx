@@ -15,8 +15,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/auth-context';
 import { useTheme } from '../../context/theme-context';
-import { useFamily } from '../../context/family-context';
+import { useStaffPatients } from '../../context/staff-patients-context';
 import { useAppointments } from '../../context/appointments-context';
+import { useNotifications } from '../../context/notifications-context';
 import { FamilyMember } from '../../lib/data';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
@@ -24,18 +25,25 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 export default function StaffDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const { familyMembers } = useFamily();
+  const { staffPatients } = useStaffPatients();
+  // Use staffPatients as familyMembers for compatibility
+  const familyMembers = staffPatients;
   const { appointments } = useAppointments();
+  const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'up-to-date' | 'needs-update'>('all');
   const [expandedFamilies, setExpandedFamilies] = useState<Set<string>>(new Set());
   const [showFullyVaccinatedModal, setShowFullyVaccinatedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
-  const [clearedActivities, setClearedActivities] = useState(false);
 
-  // Group patients by family (grouping by the "Me" relationship member as family head)
+  // Staff should not see patient family members - they need their own patient management system
+  // For now, show empty state since there's no patient assignment system yet
   const families = React.useMemo(() => {
-    // Use the same grouping logic as other screens
+    // Return empty array - staff accounts don't have family members
+    // In the future, this should load patients assigned to this staff member
+    return [];
+    
+    // Old code (kept for reference when implementing patient assignment):
     const groupedFamilies = familyMembers.reduce((acc, member) => {
       const familyOwner = member.relationship === 'Me' 
         ? member 
@@ -153,9 +161,11 @@ export default function StaffDashboardScreen({ navigation }: any) {
               onPress={() => navigation.navigate('Notifications')}
             >
               <Ionicons name="notifications" size={24} color={theme.colors.text} />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeCount}>3</Text>
-              </View>
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeCount}>{unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.iconButton, { backgroundColor: theme.colors.iconBackground }]}
@@ -210,64 +220,17 @@ export default function StaffDashboardScreen({ navigation }: any) {
         <View style={[styles.section, { marginBottom: 32 }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent Activity</Text>
-            {!clearedActivities && (
-              <TouchableOpacity
-                onPress={() => setClearedActivities(true)}
-                style={styles.clearButton}
-              >
-                <Ionicons name="close-circle-outline" size={20} color={theme.colors.primary} />
-              </TouchableOpacity>
-            )}
           </View>
           
-          {!clearedActivities ? (
-            <>
-              <View style={[styles.activityCard, { backgroundColor: theme.colors.card }]}>
-                <View style={[styles.activityIcon, { backgroundColor: '#dcfce7' }]}>
-                  <Ionicons name="checkmark-circle" size={20} color="#15803d" />
-                </View>
-                <View style={styles.activityInfo}>
-                  <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Vaccination Completed</Text>
-                  <Text style={[styles.activityDetail, { color: theme.colors.textSecondary }]}>
-                    Emma Doe - Influenza Vaccine
-                  </Text>
-                  <Text style={[styles.activityTime, { color: theme.colors.textTertiary }]}>2 hours ago</Text>
-                </View>
-              </View>
-
-              <View style={[styles.activityCard, { backgroundColor: theme.colors.card }]}>
-                <View style={[styles.activityIcon, { backgroundColor: '#eef2ff' }]}>
-                  <Ionicons name="person-add" size={20} color="#6366f1" />
-                </View>
-                <View style={styles.activityInfo}>
-                  <Text style={[styles.activityTitle, { color: theme.colors.text }]}>New Patient Registered</Text>
-                  <Text style={[styles.activityDetail, { color: theme.colors.textSecondary }]}>
-                    Smith Family - 3 members
-                  </Text>
-                  <Text style={[styles.activityTime, { color: theme.colors.textTertiary }]}>5 hours ago</Text>
-                </View>
-              </View>
-
-              <View style={[styles.activityCard, { backgroundColor: theme.colors.card }]}>
-                <View style={[styles.activityIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Ionicons name="calendar" size={20} color="#b45309" />
-                </View>
-                <View style={styles.activityInfo}>
-                  <Text style={[styles.activityTitle, { color: theme.colors.text }]}>Appointment Scheduled</Text>
-                  <Text style={[styles.activityDetail, { color: theme.colors.textSecondary }]}>
-                    Julian Doe - MMR Dose 2
-                  </Text>
-                  <Text style={[styles.activityTime, { color: theme.colors.textTertiary }]}>1 day ago</Text>
-                </View>
-              </View>
-            </>
-          ) : (
-            <View style={styles.emptyActivitiesContainer}>
-              <Text style={[styles.emptyActivitiesText, { color: theme.colors.textSecondary }]}>
-                No recent activities
-              </Text>
-            </View>
-          )}
+          <View style={styles.emptyActivitiesContainer}>
+            <Ionicons name="pulse-outline" size={48} color={theme.colors.textTertiary} style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyActivitiesText, { color: theme.colors.textSecondary }]}>
+              No recent activities
+            </Text>
+            <Text style={[styles.emptyActivitiesSubtext, { color: theme.colors.textTertiary }]}>
+              Patient activities will appear here
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -688,7 +651,11 @@ const styles = StyleSheet.create({
   },
   emptyActivitiesText: {
     fontSize: 14,
-    fontStyle: 'italic',
+    fontWeight: '600',
+  },
+  emptyActivitiesSubtext: {
+    fontSize: 12,
+    marginTop: 4,
   },
   modalContainer: {
     flex: 1,

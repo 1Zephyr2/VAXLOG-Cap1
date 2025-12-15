@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../../context/family-context';
@@ -18,21 +20,17 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 
 export default function LoginScreen({ navigation }: any) {
   const [selectedRole, setSelectedRole] = useState<UserRole>('patient');
-  const [email, setEmail] = useState('jessica@example.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { setFamilyMembers } = useFamily();
   const { login } = useAuth();
 
   const [errors, setErrors] = useState({ email: '', password: '' });
 
-  // Update email when role changes
+  // Update role selection
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
-    if (role === 'staff') {
-      setEmail('dr.sarah@hospital.com');
-    } else {
-      setEmail('jessica@example.com');
-    }
   };
 
   const validateEmail = (value: string) => {
@@ -66,7 +64,7 @@ export default function LoginScreen({ navigation }: any) {
     setErrors((prev) => ({ ...prev, password: validatePassword(value) }));
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
 
@@ -76,23 +74,32 @@ export default function LoginScreen({ navigation }: any) {
       return;
     }
     
-    // Authenticate user with selected role
-    const success = login(email, password, selectedRole);
-    
-    if (!success) {
-      setErrors({ email: 'Invalid credentials', password: '' });
-      return;
+    setLoading(true);
+    try {
+      // Authenticate user with Firebase
+      await login(email, password);
+      
+      // Firebase will automatically handle auth state change
+      // The auth context will set the user and navigation will happen automatically
+      navigation.replace('Main');
+    } catch (error: any) {
+      let errorMessage = 'Failed to login. Please try again.';
+      
+      // Handle specific Firebase errors
+      if (error.message.includes('user-not-found') || error.message.includes('wrong-password') || error.message.includes('invalid-credential')) {
+        errorMessage = 'Invalid email or password.';
+      } else if (error.message.includes('too-many-requests')) {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.message.includes('network-request-failed')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.message.includes('user-disabled')) {
+        errorMessage = 'This account has been disabled.';
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    // Only load family data for patient role
-    if (selectedRole === 'patient') {
-      const { familyMembers: sampleFamily } = require('../../lib/data');
-      // Family data already includes Jessica Doe as the account owner
-      // No need to add her again
-      setFamilyMembers(sampleFamily);
-    }
-    
-    navigation.replace('Main');
   };
 
   return (
@@ -184,11 +191,15 @@ export default function LoginScreen({ navigation }: any) {
             </View>
 
             <TouchableOpacity 
-              style={[styles.button, (errors.email || errors.password || !email || !password) && styles.buttonDisabled]} 
+              style={[styles.button, (loading || errors.email || errors.password || !email || !password) && styles.buttonDisabled]} 
               onPress={handleLogin}
-              disabled={!!(errors.email || errors.password || !email || !password)}
+              disabled={loading || !!(errors.email || errors.password || !email || !password)}
             >
-              <Text style={styles.buttonText}>Log In</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Log In</Text>
+              )}
             </TouchableOpacity>
           </View>
 

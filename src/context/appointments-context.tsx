@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { useAuth } from './auth-context';
 
 export type Appointment = {
   id: string;
@@ -12,63 +15,118 @@ export type Appointment = {
 
 type AppointmentsContextType = {
   appointments: Appointment[];
-  addAppointment: (appointment: Appointment) => void;
-  updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
-  cancelAppointment: (appointmentId: string) => void;
-  completeAppointment: (appointmentId: string) => void;
+  addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<void>;
+  updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => Promise<void>;
+  cancelAppointment: (appointmentId: string) => Promise<void>;
+  completeAppointment: (appointmentId: string) => Promise<void>;
+  loadAppointments: () => Promise<void>;
 };
 
 const AppointmentsContext = createContext<AppointmentsContextType | undefined>(undefined);
 
 export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    {
-      id: '1',
-      patientId: 'user-julian',
-      patientName: 'Julian Doe',
-      vaccine: 'MMR Dose 2',
-      time: '09:00 AM',
-      date: new Date().toISOString().split('T')[0],
-      status: 'scheduled',
-    },
-    {
-      id: '2',
-      patientId: 'user-elena',
-      patientName: 'Elena Doe',
-      vaccine: 'DTaP Dose 4',
-      time: '10:30 AM',
-      date: new Date().toISOString().split('T')[0],
-      status: 'scheduled',
-    },
-    {
-      id: '3',
-      patientId: 'user-ryan',
-      patientName: 'Ryan Doe',
-      vaccine: 'Hepatitis B',
-      time: '02:00 PM',
-      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      status: 'scheduled',
-    },
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { user } = useAuth();
 
-  const addAppointment = (appointment: Appointment) => {
-    setAppointments([...appointments, appointment]);
+  // Load appointments from Firestore when user logs in
+  const loadAppointments = async () => {
+    if (!user) return;
+
+    try {
+      const q = query(
+        collection(db, 'appointments'),
+        where('userId', '==', user.id)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const loadedAppointments: Appointment[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        loadedAppointments.push({
+          id: doc.id,
+          ...doc.data(),
+        } as Appointment);
+      });
+      
+      // Sort by date ascending (earliest first)
+      loadedAppointments.sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+      
+      setAppointments(loadedAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+    }
   };
 
-  const updateAppointment = (appointmentId: string, updates: Partial<Appointment>) => {
-    setAppointments(
-      appointments.map(apt =>
-        apt.id === appointmentId ? { ...apt, ...updates } : apt
-      )
-    );
+  // Load appointments when user logs in, clear when logs out
+  useEffect(() => {
+    if (user) {
+      loadAppointments();
+    } else {
+      setAppointments([]);
+    }
+  }, [user]);
+
+  const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
+    if (!user) {
+      throw new Error('User must be logged in to add appointments');
+    }
+
+    try {
+      const appointmentData = {
+        ...appointment,
+        userId: user.id,
+        createdAt: new Date().toISOString(),
+      };
+
+      const docRef = await addDoc(collection(db, 'appointments'), appointmentData);
+      
+      setAppointments([...appointments, {
+        ...appointment,
+        id: docRef.id,
+      }]);
+    } catch (error) {
+      console.error('Error adding appointment:', error);
+      throw error;
+    }
   };
 
-  const cancelAppointment = (appointmentId: string) => {
-    setAppointments(appointments.filter(apt => apt.id !== appointmentId));
+  const updateAppointment = async (appointmentId: string, updates: Partial<Appointment>) => {
+    if (!user) {
+      throw new Error('User must be logged in to update appointments');
+    }
+
+    try {
+      await updateDoc(doc(db, 'appointments', appointmentId), updates);
+      
+      setAppointments(
+        appointments.map(apt =>
+          apt.id === appointmentId ? { ...apt, ...updates } : apt
+        )
+      );
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      throw error;
+    }
   };
 
-  const completeAppointment = (appointmentId: string) => {
-    updateAppointment(appointmentId, { status: 'completed' });
+  const cancelAppointment = async (appointmentId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to cancel appointments');
+    }
+
+    try {
+      await deleteDoc(doc(db, 'appointments', appointmentId));
+      setAppointments(appointments.filter(apt => apt.id !== appointmentId));
+    } catch (error) {
+      console.error('Error canceling appointment:', error);
+      throw error;
+    }
+  };
+
+  const completeAppointment = async (appointmentId: string) => {
+    await updateAppointment(appointmentId, { status: 'completed' });
   };
 
   return (
@@ -79,6 +137,7 @@ export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
         updateAppointment,
         cancelAppointment,
         completeAppointment,
+        loadAppointments,
       }}
     >
       {children}

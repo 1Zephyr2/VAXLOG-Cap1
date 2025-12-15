@@ -25,8 +25,8 @@ export default function StaffProfileScreen({ navigation }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(user?.name || '');
   const [editedPhone, setEditedPhone] = useState(user?.phone || '');
-  const [editedPosition, setEditedPosition] = useState('Pediatric Nurse');
-  const [editedDepartment, setEditedDepartment] = useState('Immunization');
+  const [editedPosition, setEditedPosition] = useState('');
+  const [editedDepartment, setEditedDepartment] = useState('');
   const [editedEmail, setEditedEmail] = useState(user?.email || '');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,6 +44,11 @@ export default function StaffProfileScreen({ navigation }: any) {
 
     if (editedPhone && editedPhone.length < 10) {
       Alert.alert('Error', 'Phone number must be at least 10 digits');
+      return;
+    }
+
+    if (editedPhone && editedPhone[0] !== '9') {
+      Alert.alert('Error', 'Philippine mobile numbers must start with 9');
       return;
     }
 
@@ -128,21 +133,27 @@ export default function StaffProfileScreen({ navigation }: any) {
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Phone Number</Text>
             <View style={[styles.inputContainer, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}>
-              <Text style={[styles.phonePrefix, { color: theme.colors.textSecondary }]}>+1</Text>
+              <Text style={[styles.phonePrefix, { color: theme.colors.textSecondary }]}>+63</Text>
               <TextInput
                 style={[styles.phoneInput, { color: theme.colors.text }]}
-                placeholder="(555) 123-4567"
+                placeholder="9XX XXX XXXX"
                 placeholderTextColor={theme.colors.textTertiary}
                 value={editedPhone}
                 onChangeText={handlePhoneChange}
                 editable={isEditing}
                 pointerEvents={isEditing ? 'auto' : 'none'}
                 keyboardType="numeric"
+                maxLength={11}
               />
             </View>
             {editedPhone && editedPhone.length < 10 && isEditing && (
               <Text style={[styles.errorText, { color: theme.colors.error }]}>
                 Phone number must be at least 10 digits
+              </Text>
+            )}
+            {editedPhone && editedPhone.length >= 10 && editedPhone[0] !== '9' && isEditing && (
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                Philippine mobile numbers must start with 9
               </Text>
             )}
           </View>
