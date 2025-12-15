@@ -187,44 +187,53 @@ export default function DashboardScreen({ navigation }: any) {
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 80, paddingTop: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <TouchableOpacity 
-            style={[styles.statCard, { backgroundColor: theme.colors.card }]}
-            onPress={() => setShowCompletedModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.statIconContainer, { backgroundColor: theme.colors.iconBackground }]}>
-              <Ionicons name="shield-checkmark" size={24} color={theme.colors.success} />
-            </View>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{completedVaccines}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Completed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.statCard, { backgroundColor: theme.colors.card }]}
-            onPress={() => setShowUpcomingModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.statIconContainer, { backgroundColor: theme.colors.iconBackground }]}>
-              <Ionicons name="calendar" size={24} color={theme.colors.warning} />
-            </View>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{upcomingAppointments.length}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Upcoming</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.statCard, { backgroundColor: theme.colors.card }]}
-            onPress={() => navigation.navigate('Family')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.statIconContainer, { backgroundColor: theme.colors.iconBackground }]}>
-              <Ionicons name="people" size={24} color={theme.colors.primary} />
-            </View>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{familyMembers.length}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Members</Text>
-          </TouchableOpacity>
+        {/* Health Overview */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Health Overview</Text>
+          <View style={styles.healthOverviewContainer}>
+            <TouchableOpacity 
+              style={[styles.healthStatCard, { backgroundColor: theme.colors.card }]}
+              onPress={() => setShowCompletedModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.healthStatIcon, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
+              </View>
+              <View style={styles.healthStatContent}>
+                <Text style={[styles.healthStatNumber, { color: theme.colors.text }]}>{completedVaccines}</Text>
+                <Text style={[styles.healthStatLabel, { color: theme.colors.textSecondary }]}>Completed</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.healthStatCard, { backgroundColor: theme.colors.card }]}
+              onPress={() => setShowUpcomingModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.healthStatIcon, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="calendar" size={20} color="#f59e0b" />
+              </View>
+              <View style={styles.healthStatContent}>
+                <Text style={[styles.healthStatNumber, { color: theme.colors.text }]}>{upcomingAppointments.length}</Text>
+                <Text style={[styles.healthStatLabel, { color: theme.colors.textSecondary }]}>Upcoming</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.healthStatCard, { backgroundColor: theme.colors.card }]}
+              onPress={() => navigation.navigate('Family')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.healthStatIcon, { backgroundColor: '#e0e7ff' }]}>
+                <Ionicons name="people" size={20} color="#6366f1" />
+              </View>
+              <View style={styles.healthStatContent}>
+                <Text style={[styles.healthStatNumber, { color: theme.colors.text }]}>{familyMembers.length}</Text>
+                <Text style={[styles.healthStatLabel, { color: theme.colors.textSecondary }]}>Members</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Next Dose Card */}
@@ -766,6 +775,40 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  healthOverviewContainer: {
+    gap: 10,
+    marginTop: 12,
+  },
+  healthStatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  healthStatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthStatContent: {
+    flex: 1,
+  },
+  healthStatNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  healthStatLabel: {
+    fontSize: 11,
   },
   sectionHeader: {
     flexDirection: 'row',

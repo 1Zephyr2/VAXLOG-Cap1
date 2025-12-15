@@ -24,7 +24,7 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 
 export default function PatientManagementScreen({ navigation }: any) {
   const { theme } = useTheme();
-  const { staffPatients, addStaffPatient, updateStaffPatient, deleteStaffPatient, loadStaffPatients } = useStaffPatients();
+  const { staffPatients, addStaffPatient, updateStaffPatient, deleteStaffPatient, loadStaffPatients, syncFamilyMembers } = useStaffPatients();
   // Use staffPatients as familyMembers for compatibility with existing code
   const familyMembers = staffPatients;
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +37,7 @@ export default function PatientManagementScreen({ navigation }: any) {
   const [birthDate, setBirthDate] = useState('');
   const [birthYear, setBirthYear] = useState('');
   const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('Male');
   const [selectedVaccine, setSelectedVaccine] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showEditFamilyModal, setShowEditFamilyModal] = useState(false);
@@ -374,7 +375,30 @@ export default function PatientManagementScreen({ navigation }: any) {
       const familyDetected = await checkForFamilyAccount(patientEmail);
 
       if (familyDetected && familyDetected.familyMembers && familyDetected.familyMembers.length > 0) {
-        // Add ALL family members from the registered account
+        // First, add the account owner (the person who registered)
+        const ownerData = {
+          name: patientName,
+          email: patientEmail,
+          phone: patientPhone,
+          birthdate: `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDate.padStart(2, '0')}`,
+          age: parseInt(patientAge),
+          gender: patientGender || 'Male',
+          relationship: 'Me',
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(patientName)}&backgroundColor=6366f1`,
+          isFullyVaccinated: false,
+          linkedAccountEmail: patientEmail,
+          familyGroupId: '', // Will be set to owner's ID after creation
+          nextDose: null,
+          vaccineHistory: [],
+        } as Omit<FamilyMember, 'id'>;
+        
+        // Add owner first and get their ID
+        const ownerId = await addStaffPatient(ownerData);
+        
+        // Update owner's familyGroupId to point to themselves
+        await updateStaffPatient(ownerId, { familyGroupId: ownerId });
+        
+        // Then add ALL family members from the registered account with owner's ID as familyGroupId
         for (const familyMember of familyDetected.familyMembers) {
           const fmData = familyMember as any;
           const memberData = {
@@ -384,11 +408,11 @@ export default function PatientManagementScreen({ navigation }: any) {
             birthdate: fmData.birthdate || `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDate.padStart(2, '0')}`,
             age: fmData.age || parseInt(patientAge),
             gender: fmData.gender || 'Male',
-            relationship: fmData.relationship || 'Me',
+            relationship: fmData.relationship || 'Individual',
             avatarUrl: fmData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fmData.name || patientName)}&backgroundColor=6366f1`,
             isFullyVaccinated: fmData.isFullyVaccinated || false,
             linkedAccountEmail: patientEmail, // Link all family members to the main account email
-            familyGroupId: familyDetected.userId, // Group ID for family
+            familyGroupId: ownerId, // Use owner's document ID as family group ID
             nextDose: fmData.nextDose || null,
             vaccineHistory: fmData.vaccineHistory || [],
           } as Omit<FamilyMember, 'id'>;
@@ -396,9 +420,13 @@ export default function PatientManagementScreen({ navigation }: any) {
           await addStaffPatient(memberData);
         }
         
+        // Reload patients to ensure correct state
+        await loadStaffPatients();
+        
+        const totalMembers = familyDetected.familySize + 1; // +1 for the owner
         Alert.alert(
           'Success',
-          `Family added! ${familyDetected.familySize} family member(s) imported from registered account.`,
+          `Family added! ${totalMembers} family member(s) imported (${patientName} + ${familyDetected.familySize} family members).`,
           [
             {
               text: 'OK',
@@ -438,6 +466,7 @@ export default function PatientManagementScreen({ navigation }: any) {
     setBirthDate('');
     setBirthYear('');
     setPatientAge('');
+    setPatientGender('Male');
     setSelectedVaccine('');
   };
 
@@ -500,6 +529,55 @@ export default function PatientManagementScreen({ navigation }: any) {
     }
   };
 
+  const handleDeleteIndividualPatient = (patient: FamilyMember) => {
+    Alert.alert(
+      'Remove Patient',
+      `Are you sure you want to remove ${patient.name} from your patient list?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              await deleteStaffPatient(patient.id);
+              Alert.alert('Success', `${patient.name} has been removed from your patient list`);
+            } catch (error) {
+              console.error('Error deleting patient:', error);
+              Alert.alert('Error', 'Failed to remove patient. Please try again.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const handleDeleteFamilyGroup = (family: { owner: any; members: any[] }) => {
+    Alert.alert(
+      'Remove Family Group',
+      `Remove ${family.owner.name}'s family group? This will remove all ${family.members.length} member(s) from your patient list.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove All', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              // Delete all family members
+              for (const member of family.members) {
+                await deleteStaffPatient(member.id);
+              }
+              Alert.alert('Success', `${family.owner.name}'s family has been removed from your patient list`);
+            } catch (error) {
+              console.error('Error deleting family:', error);
+              Alert.alert('Error', 'Failed to remove family group. Please try again.');
+            }
+          }
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
@@ -508,13 +586,24 @@ export default function PatientManagementScreen({ navigation }: any) {
       <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>Patients</Text>
-          <TouchableOpacity 
-            style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
-            onPress={handleAddPatient}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.addButtonText}>Add</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={[styles.syncButton, { backgroundColor: theme.colors.primary + '20' }]}
+              onPress={async () => {
+                await syncFamilyMembers();
+                Alert.alert('Success', 'Family members synced successfully');
+              }}
+            >
+              <Ionicons name="sync" size={18} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleAddPatient}
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search */}
@@ -617,11 +706,22 @@ export default function PatientManagementScreen({ navigation }: any) {
                       </View>
                     </View>
                   </View>
-                  <Ionicons 
-                    name="chevron-forward" 
-                    size={20} 
-                    color={theme.colors.textTertiary} 
-                  />
+                  <View style={styles.singlePatientActions}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteIndividualPatient(member);
+                      }}
+                      style={[styles.deleteButton, { backgroundColor: theme.colors.error + '15' }]}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+                    </TouchableOpacity>
+                    <Ionicons 
+                      name="chevron-forward" 
+                      size={20} 
+                      color={theme.colors.textTertiary} 
+                    />
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -636,36 +736,47 @@ export default function PatientManagementScreen({ navigation }: any) {
               >
                 <View style={styles.familyInfo}>
                   <Text style={[styles.familyGroupLabel, { color: theme.colors.textSecondary }]}>FAMILY GROUP</Text>
-                  <View style={styles.familyTitleRow}>
-                    <View style={styles.familyNameWithEdit}>
-                      <Text style={[styles.familyName, { color: theme.colors.text }]}>
-                        {family.owner.name.split(' ')[1] || family.owner.name} Family
-                      </Text>
-                      <TouchableOpacity 
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleEditFamilyName(family.owner.id);
-                        }}
-                        style={styles.editFamilyButton}
-                      >
-                        <Ionicons name="pencil" size={14} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                    </View>
+                  <View style={styles.familyNameWithEdit}>
+                    <Text style={[styles.familyName, { color: theme.colors.text }]}>
+                      {family.owner.name}'s Family
+                    </Text>
+                    <TouchableOpacity 
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditFamilyName(family.owner.id);
+                      }}
+                      style={styles.editFamilyButton}
+                    >
+                      <Ionicons name="pencil" size={14} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.familyMetaRow}>
                     <View style={[styles.vaccineBadge, { backgroundColor: upToDate === familyMembers.length ? theme.colors.success + '20' : theme.colors.warning + '20' }]}>
                       <Text style={[styles.vaccineBadgeText, { color: upToDate === familyMembers.length ? theme.colors.success : theme.colors.warning }]}>
                         {upToDate}/{familyMembers.length} Up-to-Date
                       </Text>
                     </View>
+                    <Text style={[styles.memberCount, { color: theme.colors.textSecondary }]}>
+                      {familyMembers.length} members
+                    </Text>
                   </View>
-                  <Text style={[styles.memberCount, { color: theme.colors.textSecondary }]}>
-                    {familyMembers.length} members
-                  </Text>
                 </View>
-                <Ionicons 
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                  size={24} 
-                  color={theme.colors.textSecondary} 
-                />
+                <View style={styles.familyHeaderActions}>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFamilyGroup(family);
+                    }}
+                    style={[styles.deleteFamilyButton, { backgroundColor: theme.colors.error + '15' }]}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+                  </TouchableOpacity>
+                  <Ionicons 
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                    size={24} 
+                    color={theme.colors.textSecondary} 
+                  />
+                </View>
               </TouchableOpacity>
 
               {isExpanded && (
@@ -880,41 +991,29 @@ export default function PatientManagementScreen({ navigation }: any) {
             )}
 
             <View style={styles.formGroup}>
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Select Vaccine (Optional)</Text>
-              <Text style={[styles.helperText, { color: theme.colors.textTertiary }]}>Leave blank if not scheduling vaccination now</Text>
-              <ScrollView style={styles.vaccineList} nestedScrollEnabled={true}>
-                {vaccines.map((vaccine) => (
+              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Gender</Text>
+              <View style={styles.genderOptions}>
+                {['Male', 'Female', 'Other'].map((gender) => (
                   <TouchableOpacity
-                    key={vaccine}
+                    key={gender}
                     style={[
-                      styles.vaccineOption,
+                      styles.genderOption,
                       { 
-                        backgroundColor: selectedVaccine === vaccine ? theme.colors.primary : theme.colors.card,
-                        borderColor: theme.colors.border,
+                        backgroundColor: patientGender === gender ? theme.colors.primary : theme.colors.card,
+                        borderColor: patientGender === gender ? theme.colors.primary : theme.colors.border,
                       }
                     ]}
-                    onPress={() => setSelectedVaccine(vaccine)}
+                    onPress={() => setPatientGender(gender)}
                   >
-                    <View style={[
-                      styles.vaccineCheckbox,
-                      { 
-                        backgroundColor: selectedVaccine === vaccine ? theme.colors.primary : 'transparent',
-                        borderColor: selectedVaccine === vaccine ? theme.colors.primary : theme.colors.border,
-                      }
-                    ]}>
-                      {selectedVaccine === vaccine && (
-                        <Ionicons name="checkmark" size={16} color="#fff" />
-                      )}
-                    </View>
                     <Text style={[
-                      styles.vaccineText,
-                      { color: selectedVaccine === vaccine ? '#fff' : theme.colors.text }
+                      styles.genderOptionText,
+                      { color: patientGender === gender ? '#fff' : theme.colors.text }
                     ]}>
-                      {vaccine}
+                      {gender}
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
 
             <View style={styles.modalActions}>
@@ -1339,6 +1438,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  syncButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1433,6 +1544,18 @@ const styles = StyleSheet.create({
   familyInfo: {
     flex: 1,
   },
+  familyHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteFamilyButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   familyGroupLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -1446,16 +1569,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     flexWrap: 'wrap',
   },
-  familyTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
   familyNameWithEdit: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 8,
+  },
+  familyMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   familyName: {
     fontSize: 18,
@@ -1483,14 +1606,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   memberCount: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '500',
   },
   primaryContact: {
     fontSize: 13,
   },
   membersList: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    paddingTop: 8,
   },
   hierarchyContainer: {
     position: 'relative',
@@ -1498,21 +1622,23 @@ const styles = StyleSheet.create({
   hierarchyLine: {
     position: 'absolute',
     width: 2,
-    top: 0,
+    top: -16,
     bottom: '50%',
-    zIndex: 1,
+    zIndex: 0,
   },
   hierarchyConnector: {
     position: 'absolute',
     height: 2,
-    width: 16,
+    width: 20,
     top: '50%',
-    zIndex: 1,
+    zIndex: 0,
   },
   memberRow: {
     flexDirection: 'row',
     padding: 16,
+    paddingRight: 12,
     gap: 12,
+    alignItems: 'center',
   },
   memberAvatar: {
     width: 50,
@@ -1550,16 +1676,16 @@ const styles = StyleSheet.create({
   },
   memberDetails: {
     fontSize: 13,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   memberEmail: {
     fontSize: 11,
     marginBottom: 4,
   },
   primaryContactText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 4,
     marginBottom: 6,
   },
   memberActions: {
@@ -1576,6 +1702,7 @@ const styles = StyleSheet.create({
   singlePatientContainer: {
     flexDirection: 'row',
     padding: 16,
+    paddingRight: 12,
     alignItems: 'center',
     gap: 12,
   },
@@ -1604,6 +1731,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 8,
+  },
+  singlePatientActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   relationshipButton: {
     flexDirection: 'row',
@@ -1778,6 +1917,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   ageDisplayText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  genderOptionText: {
     fontSize: 14,
     fontWeight: '600',
   },

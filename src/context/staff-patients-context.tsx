@@ -11,6 +11,7 @@ type StaffPatientsContextType = {
   updateStaffPatient: (patientId: string, updates: Partial<FamilyMember>) => Promise<void>;
   deleteStaffPatient: (patientId: string) => Promise<void>;
   loadStaffPatients: () => Promise<void>;
+  syncFamilyMembers: () => Promise<void>;
 };
 
 const StaffPatientsContext = createContext<StaffPatientsContextType | undefined>(undefined);
@@ -57,10 +58,76 @@ export const StaffPatientsProvider = ({ children }: { children: ReactNode }) => 
   useEffect(() => {
     if (user && user.role === 'staff') {
       loadStaffPatients();
+      
+      // Set up periodic sync every 30 seconds
+      const syncInterval = setInterval(() => {
+        syncFamilyMembers();
+      }, 30000);
+      
+      return () => clearInterval(syncInterval);
     } else {
       setStaffPatients([]);
     }
   }, [user]);
+
+  // Sync family members - check if any registered patients have added new family members
+  const syncFamilyMembers = async () => {
+    if (!user || user.role !== 'staff') return;
+
+    try {
+      // Get all patients with linked account emails
+      const patientsWithAccounts = staffPatients.filter(p => p.linkedAccountEmail && p.relationship === 'Me');
+      
+      for (const patient of patientsWithAccounts) {
+        // Check their family members in the familyMembers collection
+        const usersQuery = query(collection(db, 'users'), where('email', '==', patient.linkedAccountEmail));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        if (!usersSnapshot.empty) {
+          const userId = usersSnapshot.docs[0].id;
+          
+          // Get their family members from Firebase
+          const familyQuery = query(collection(db, 'familyMembers'), where('userId', '==', userId));
+          const familySnapshot = await getDocs(familyQuery);
+          
+          // Get current family members in staff list
+          const currentFamilyIds = staffPatients
+            .filter(p => p.familyGroupId === patient.familyGroupId)
+            .map(p => p.name + p.birthdate); // Use name+birthdate as unique identifier
+          
+          // Check for new family members
+          for (const familyDoc of familySnapshot.docs) {
+            const fmData = familyDoc.data();
+            const uniqueId = fmData.name + fmData.birthdate;
+            
+            // If this family member doesn't exist in staff list, add them
+            if (!currentFamilyIds.includes(uniqueId)) {
+              const newMemberData = {
+                name: fmData.name,
+                email: fmData.email || patient.linkedAccountEmail,
+                phone: fmData.phone || patient.phone,
+                birthdate: fmData.birthdate,
+                age: fmData.age,
+                gender: fmData.gender,
+                relationship: fmData.relationship,
+                avatarUrl: fmData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fmData.name)}&backgroundColor=6366f1`,
+                isFullyVaccinated: fmData.isFullyVaccinated || false,
+                linkedAccountEmail: patient.linkedAccountEmail,
+                familyGroupId: patient.familyGroupId,
+                nextDose: fmData.nextDose || null,
+                vaccineHistory: fmData.vaccineHistory || [],
+              } as Omit<FamilyMember, 'id'>;
+              
+              await addStaffPatient(newMemberData);
+              console.log(`Auto-synced new family member: ${fmData.name}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing family members:', error);
+    }
+  };
 
   const addStaffPatient = async (patient: Omit<FamilyMember, 'id'>): Promise<string> => {
     if (!user || user.role !== 'staff') {
@@ -131,6 +198,7 @@ export const StaffPatientsProvider = ({ children }: { children: ReactNode }) => 
         updateStaffPatient,
         deleteStaffPatient,
         loadStaffPatients,
+        syncFamilyMembers,
       }}
     >
       {children}

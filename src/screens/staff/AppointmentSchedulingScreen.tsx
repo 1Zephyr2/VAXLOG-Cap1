@@ -1440,6 +1440,9 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
                     ]}
                     onPress={() => {
                       setSelectedDate(day);
+                      if (showReviewModal) {
+                        setReviewDate(day);
+                      }
                       setShowCalendarModal(false);
                     }}
                   >
@@ -1715,14 +1718,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   calendarGrid: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -2352,7 +2349,8 @@ const styles = StyleSheet.create({
   reviewModalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    height: '90%',
+    width: '100%',
   },
   infoSection: {
     padding: 12,
@@ -2667,10 +2665,11 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#D1D5DB',
+    minHeight: 36,
   },
   filterTabActive: {
     borderWidth: 0,
