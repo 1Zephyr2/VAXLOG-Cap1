@@ -6,19 +6,22 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../../context/family-context';
 import { useTheme } from '../../context/theme-context';
+import { useAuth } from '../../context/auth-context';
 import { useNotifications } from '../../context/notifications-context';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
 
-export default function NotificationsScreen() {
+export default function NotificationsScreen({ navigation }: any) {
   const { familyMembers } = useFamily();
   const { theme } = useTheme();
-  const { notifications: staffNotifications, markAsRead } = useNotifications();
+  const { user } = useAuth();
+  const { notifications: staffNotifications, markAsRead, deleteNotification, clearAllNotifications } = useNotifications();
 
   // Mark all unread notifications as read when screen is opened
   useEffect(() => {
@@ -48,49 +51,96 @@ export default function NotificationsScreen() {
   const allNotifications = [...staffNotifications, ...autoNotifications]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const handleClearAll = () => {
+    if (staffNotifications.length === 0) return;
+    
+    clearAllNotifications();
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    deleteNotification(id);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
-      <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Notifications</Text>
-        {staffNotifications.filter(n => !n.isRead).length > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{staffNotifications.filter(n => !n.isRead).length}</Text>
-          </View>
-        )}
-      </View>
-
+      
+      {/* Header with Clear All button */}
+      {staffNotifications.length > 0 && (
+        <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Notifications ({staffNotifications.length})
+          </Text>
+          <TouchableOpacity 
+            style={[styles.clearAllBtn, { backgroundColor: theme.colors.error }]}
+            onPress={handleClearAll}
+          >
+            <Ionicons name="trash" size={16} color="#fff" />
+            <Text style={styles.clearAllText}>Clear All</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <ScrollView style={styles.scrollView}>
         {allNotifications.map((notification) => (
-          <View 
-            key={notification.id} 
-            style={[
-              styles.notificationCard, 
-              { backgroundColor: theme.colors.card },
-              !notification.isRead && styles.unreadCard
-            ]}
+          <TouchableOpacity
+            key={notification.id}
+            activeOpacity={notification.type === 'Reminder' ? 0.7 : 1}
+            disabled={notification.type !== 'Reminder'}
+            onPress={() => {
+              if (notification.type === 'Reminder' && user?.role === 'staff') {
+                // Navigate to Appointments tab for staff
+                navigation.navigate('Main', { screen: 'Appointments' });
+              } else if (notification.type === 'Reminder') {
+                // Navigate to Appointments tab for patients
+                navigation.navigate('Main', { screen: 'Appointments' });
+              }
+            }}
           >
-            <View style={[
-              styles.iconContainer,
-              notification.type === 'Reminder' && { backgroundColor: '#fef3c7' }
-            ]}>
-              <Ionicons 
-                name={notification.type === 'Reminder' ? 'mail' : 'notifications'} 
-                size={24} 
-                color={notification.type === 'Reminder' ? '#f59e0b' : '#6366f1'} 
-              />
-            </View>
-            <View style={styles.notificationContent}>
-              <View style={styles.headerRow}>
-                <Text style={[styles.memberName, { color: theme.colors.text }]}>{notification.memberName}</Text>
-                {!notification.isRead && <View style={styles.unreadDot} />}
+            <View 
+              style={[
+                styles.notificationCard, 
+                { backgroundColor: theme.colors.card },
+                !notification.isRead && styles.unreadCard
+              ]}
+            >
+              <View style={[
+                styles.iconContainer,
+                notification.type === 'Reminder' && { backgroundColor: '#fef3c7' }
+              ]}>
+                <Ionicons 
+                  name={notification.type === 'Reminder' ? 'mail' : 'notifications'} 
+                  size={24} 
+                  color={notification.type === 'Reminder' ? '#f59e0b' : '#6366f1'} 
+                />
               </View>
-              <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{notification.message}</Text>
-              <Text style={[styles.date, { color: theme.colors.textTertiary }]}>
-                {format(parseISO(notification.date), 'MMM d, yyyy')}
-              </Text>
+              <View style={styles.notificationContent}>
+                <View style={styles.headerRow}>
+                  <Text style={[styles.memberName, { color: theme.colors.text }]}>{notification.memberName}</Text>
+                  {!notification.isRead && <View style={styles.unreadDot} />}
+                </View>
+                <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{notification.message}</Text>
+                <Text style={[styles.date, { color: theme.colors.textTertiary }]}>
+                  {format(parseISO(notification.date), 'MMM d, yyyy')}
+                </Text>
+                {notification.type === 'Reminder' && (
+                  <View style={[styles.actionHint, { backgroundColor: theme.colors.primary + '20' }]}>
+                    <Ionicons name="arrow-forward" size={12} color={theme.colors.primary} />
+                    <Text style={[styles.actionHintText, { color: theme.colors.primary }]}>Tap to review</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleDeleteNotification(notification.id);
+                }}
+              >
+                <Ionicons name="close-circle" size={24} color={theme.colors.error} />
+              </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
         {allNotifications.length === 0 && (
@@ -108,34 +158,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingTop: STATUS_BAR_HEIGHT + 8,
-  },
-  header: {
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  badge: {
-    backgroundColor: '#ef4444',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -204,5 +226,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     marginTop: 16,
+  },
+  actionHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  actionHintText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  clearAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  clearAllText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteBtn: {
+    padding: 8,
+    marginLeft: 8,
   },
 });

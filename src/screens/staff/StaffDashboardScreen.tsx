@@ -37,10 +37,22 @@ export default function StaffDashboardScreen({ navigation }: any) {
   const [showFullyVaccinatedModal, setShowFullyVaccinatedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
 
-  // Get pending checkup requests
+  // Get pending checkup requests for this staff member
   const pendingCheckupRequests = React.useMemo(() => {
-    return appointments.filter(apt => apt.appointmentType === 'checkup' && apt.status === 'pending').slice(0, 5);
-  }, [appointments]);
+    return appointments.filter(
+      apt => apt.appointmentType === 'checkup' && 
+             apt.status === 'pending' && 
+             apt.staffId === user?.id
+    ).slice(0, 5);
+  }, [appointments, user?.id]);
+
+  // Get all pending requests (for the modal)
+  const allPendingRequests = React.useMemo(() => {
+    return appointments.filter(
+      apt => apt.status === 'pending' && 
+             apt.staffId === user?.id
+    );
+  }, [appointments, user?.id]);
 
   // Staff should not see patient family members - they need their own patient management system
   // For now, show empty state since there's no patient assignment system yet
@@ -97,17 +109,7 @@ export default function StaffDashboardScreen({ navigation }: any) {
   const totalPatients = familyMembers.length;
   const fullyVaccinatedPatients = familyMembers.filter(p => p.isFullyVaccinated);
   const fullyVaccinated = fullyVaccinatedPatients.length;
-  const pendingPatients = familyMembers.filter(p => !p.isFullyVaccinated).map(patient => {
-    // Find appointment for this patient
-    const appointment = appointments.find(
-      apt => apt.patientId === patient.id && apt.status === 'scheduled'
-    );
-    return {
-      ...patient,
-      appointment,
-    };
-  });
-  const pendingVaccinations = pendingPatients.length;
+  const pendingVaccinations = allPendingRequests.length;
 
   // Filter families by search and status
   const filteredFamilies = React.useMemo(() => {
@@ -316,7 +318,7 @@ export default function StaffDashboardScreen({ navigation }: any) {
         </View>
       </Modal>
 
-      {/* Pending Vaccinations Modal */}
+      {/* Pending Requests Modal */}
       <Modal
         visible={showPendingModal}
         transparent={true}
@@ -325,7 +327,7 @@ export default function StaffDashboardScreen({ navigation }: any) {
       >
         <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
           <View style={[styles.modalHeader, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Pending Vaccinations</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Pending Requests</Text>
             <TouchableOpacity 
               onPress={() => setShowPendingModal(false)}
               style={styles.closeButton}
@@ -335,32 +337,28 @@ export default function StaffDashboardScreen({ navigation }: any) {
           </View>
           
           <FlatList
-            data={pendingPatients}
+            data={allPendingRequests}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.patientList}
             renderItem={({ item }) => (
               <TouchableOpacity 
                 style={[styles.patientCard, { backgroundColor: theme.colors.card }]}
-                onPress={() => navigation.navigate('MemberProfile', { memberId: item.id })}
+                onPress={() => {
+                  setShowPendingModal(false);
+                  navigation.navigate('Appointments');
+                }}
               >
-                <Image 
-                  source={{ uri: item.avatarUrl }} 
-                  style={styles.patientAvatar}
-                />
                 <View style={styles.patientInfo}>
-                  <Text style={[styles.patientName, { color: theme.colors.text }]}>{item.name}</Text>
-                  <Text style={[styles.patientEmail, { color: theme.colors.textSecondary }]}>{item.email || 'No email'}</Text>
-                  {item.nextDose && (
-                    <Text style={[styles.patientDose, { color: theme.colors.textSecondary }]}>Next: {item.nextDose.vaccine} - {item.nextDose.date}</Text>
-                  )}
-                  {item.appointment && (
-                    <View style={styles.appointmentInfo}>
-                      <Ionicons name="calendar" size={12} color={theme.colors.primary} />
-                      <Text style={[styles.appointmentText, { color: theme.colors.primary }]}>
-                        Appointment: {item.appointment.date} at {item.appointment.time}
-                      </Text>
-                    </View>
-                  )}
+                  <Text style={[styles.patientName, { color: theme.colors.text }]}>{item.patientName}</Text>
+                  <Text style={[styles.patientEmail, { color: theme.colors.textSecondary }]}>
+                    {item.appointmentType === 'checkup' ? item.reasonForCheckup : item.vaccine}
+                  </Text>
+                  <View style={styles.appointmentInfo}>
+                    <Ionicons name="calendar" size={12} color={theme.colors.warning} />
+                    <Text style={[styles.appointmentText, { color: theme.colors.warning }]}>
+                      Requested: {item.date ? format(new Date(item.date), 'MMM d, yyyy') : 'N/A'}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.pendingIcon}>
                   <Ionicons name="time-outline" size={24} color="#b45309" />
@@ -369,8 +367,9 @@ export default function StaffDashboardScreen({ navigation }: any) {
             )}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="information-circle-outline" size={48} color={theme.colors.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No pending vaccinations</Text>
+                <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No pending requests</Text>
+                <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>All requests have been reviewed</Text>
               </View>
             }
           />
@@ -589,6 +588,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     marginTop: 8,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
   quickActionsGrid: {
     flexDirection: 'row',

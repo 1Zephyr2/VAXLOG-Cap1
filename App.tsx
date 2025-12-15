@@ -86,7 +86,7 @@ function MainTabs() {
         />
         <Tab.Screen 
           name="Appointments" 
-          component={AppointmentsListScreen}
+          component={AppointmentSchedulingScreen}
           options={{ title: 'Appointments' }}
         />
         <Tab.Screen name="Settings" component={SettingsScreen} />

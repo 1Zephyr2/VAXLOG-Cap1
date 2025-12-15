@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './auth-context';
 
@@ -16,6 +16,8 @@ type NotificationsContextType = {
   notifications: Notification[];
   addNotification: (notification: Omit<Notification, 'id' | 'isRead'>) => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
   unreadCount: number;
   loadNotifications: () => Promise<void>;
 };
@@ -110,10 +112,40 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
+  const deleteNotification = async (id: string) => {
+    if (!user) return;
+
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+      
+      setNotifications(prev => prev.filter(notif => notif.id !== id));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      throw error;
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!user) return;
+
+    try {
+      // Delete all notifications for this user from Firebase
+      const deletePromises = notifications.map(notif => 
+        deleteDoc(doc(db, 'notifications', notif.id))
+      );
+      await Promise.all(deletePromises);
+      
+      setNotifications([]);
+    } catch (error) {
+      console.error('Error clearing all notifications:', error);
+      throw error;
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <NotificationsContext.Provider value={{ notifications, addNotification, markAsRead, unreadCount, loadNotifications }}>
+    <NotificationsContext.Provider value={{ notifications, addNotification, markAsRead, deleteNotification, clearAllNotifications, unreadCount, loadNotifications }}>
       {children}
     </NotificationsContext.Provider>
   );

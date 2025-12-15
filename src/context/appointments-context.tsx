@@ -15,6 +15,11 @@ export type Appointment = {
   status: 'pending' | 'scheduled' | 'completed' | 'cancelled';
   bookedByStaff?: boolean;
   userId?: string;
+  staffId?: string;
+  staffName?: string;
+  familyOwnerName?: string; // Name of the family account owner
+  familyOwnerEmail?: string; // Email of the family account owner
+  familyMemberRelationship?: string; // Relationship to family owner (e.g., 'Me', 'Son', 'Daughter')
 };
 
 type AppointmentsContextType = {
@@ -38,24 +43,46 @@ export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     try {
-      const q = query(
+      let loadedAppointments: Appointment[] = [];
+
+      // For staff users, load appointments where they are assigned as staff
+      if (user.role === 'staff') {
+        const staffQuery = query(
+          collection(db, 'appointments'),
+          where('staffId', '==', user.id)
+        );
+        
+        const staffSnapshot = await getDocs(staffQuery);
+        staffSnapshot.forEach((doc) => {
+          loadedAppointments.push({
+            id: doc.id,
+            ...doc.data(),
+          } as Appointment);
+        });
+      }
+
+      // For patient users (or staff viewing their own appointments), load their appointments
+      const userQuery = query(
         collection(db, 'appointments'),
         where('userId', '==', user.id)
       );
       
-      const querySnapshot = await getDocs(q);
-      const loadedAppointments: Appointment[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        loadedAppointments.push({
+      const userSnapshot = await getDocs(userQuery);
+      userSnapshot.forEach((doc) => {
+        const appointment = {
           id: doc.id,
           ...doc.data(),
-        } as Appointment);
+        } as Appointment;
+        
+        // Avoid duplicates if staff also created appointments as a patient
+        if (!loadedAppointments.find(apt => apt.id === appointment.id)) {
+          loadedAppointments.push(appointment);
+        }
       });
       
       // Sort by date ascending (earliest first)
       loadedAppointments.sort((a, b) => {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
+        return new Date(a.date || '').getTime() - new Date(b.date || '').getTime();
       });
       
       setAppointments(loadedAppointments);

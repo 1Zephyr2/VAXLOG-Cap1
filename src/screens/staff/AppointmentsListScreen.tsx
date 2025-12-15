@@ -22,7 +22,7 @@ type AppointmentStatus = 'all' | 'pending' | 'scheduled' | 'completed' | 'cancel
 
 export default function AppointmentsListScreen({ navigation }: any) {
   const { theme } = useTheme();
-  const { appointments, addAppointment, completeAppointment, cancelAppointment, updateAppointment } = useAppointments();
+  const { appointments, addAppointment, completeAppointment, cancelAppointment, updateAppointment, deleteAppointment } = useAppointments();
   const { staffPatients, updateStaffPatient } = useStaffPatients();
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus>('all');
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -347,6 +347,39 @@ export default function AppointmentsListScreen({ navigation }: any) {
     }
   };
 
+  const handleDeleteHistory = () => {
+    const targetStatus = filterStatus === 'completed' ? 'completed' : 'cancelled';
+    const targetAppointments = appointments.filter(apt => apt.status === targetStatus);
+    
+    if (targetAppointments.length === 0) {
+      Alert.alert('No History', `No ${targetStatus} appointments to delete`);
+      return;
+    }
+
+    Alert.alert(
+      `Delete ${targetStatus.charAt(0).toUpperCase() + targetStatus.slice(1)} History`,
+      `Delete all ${targetAppointments.length} ${targetStatus} appointments? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              for (const apt of targetAppointments) {
+                await deleteAppointment(apt.id);
+              }
+              Alert.alert('Success', `${targetStatus.charAt(0).toUpperCase() + targetStatus.slice(1)} appointment history deleted`);
+            } catch (error) {
+              console.error('Error deleting appointments:', error);
+              Alert.alert('Error', 'Failed to delete appointments');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -444,6 +477,19 @@ export default function AppointmentsListScreen({ navigation }: any) {
           ))}
         </ScrollView>
       </View>
+
+      {/* Clear History Button */}
+      {(filterStatus === 'completed' || filterStatus === 'cancelled') && sortedAppointments.length > 0 && (
+        <View style={[styles.clearHistoryContainer, { backgroundColor: theme.colors.card }]}>
+          <TouchableOpacity
+            style={[styles.clearHistoryButton, { backgroundColor: theme.colors.error }]}
+            onPress={handleDeleteHistory}
+          >
+            <Ionicons name="trash" size={18} color="#fff" />
+            <Text style={styles.clearHistoryButtonText}>Clear {filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)} History</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Appointments List */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
@@ -985,6 +1031,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   bookButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1019,12 +1070,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
   },
   filterScroll: {
-    gap: 8,
+    flex: 1,
   },
   filterBtn: {
     paddingHorizontal: 14,
@@ -1395,4 +1448,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-});
+  clearHistoryContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  clearHistoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  clearHistoryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },});

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../../context/family-context';
 import { useTheme } from '../../context/theme-context';
+import { useAuth } from '../../context/auth-context';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
@@ -20,12 +21,42 @@ const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight |
 export default function VaccinationsScreen() {
   const { familyMembers } = useFamily();
   const { theme } = useTheme();
+  const { user } = useAuth();
+  
+  // Always include the owner (user) in the family member selector
+  const effectiveMembers = useMemo(() => {
+    if (!user) return [];
+    
+    // Check if user is already in familyMembers (relationship === 'Me')
+    const hasOwner = familyMembers.some(m => m.relationship === 'Me' || m.id === user.id);
+    
+    if (hasOwner) {
+      return familyMembers;
+    }
+    
+    // If owner not in list, add them at the beginning
+    return [{
+      id: user.id,
+      name: user.name || 'Me',
+      email: user.email,
+      relationship: 'Me',
+      avatarUrl: '',
+      age: 0,
+      birthdate: '',
+      gender: 'Other' as const,
+      phone: '',
+      isFullyVaccinated: false,
+      nextDose: null,
+      vaccineHistory: []
+    }, ...familyMembers];
+  }, [familyMembers, user]);
+
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
-    familyMembers.length > 0 ? familyMembers[0].id : null
+    effectiveMembers.length > 0 ? effectiveMembers[0].id : null
   );
   const [searchQuery, setSearchQuery] = useState('');
 
-  const selectedMember = familyMembers.find((m) => m.id === selectedMemberId);
+  const selectedMember = effectiveMembers.find((m) => m.id === selectedMemberId);
   
   const filteredVaccines = useMemo(() => {
     if (!selectedMember) return [];
@@ -48,9 +79,10 @@ export default function VaccinationsScreen() {
 
       <ScrollView style={styles.scrollView}>
         {/* Family Member Tabs */}
-        <View style={[styles.membersContainer, { backgroundColor: theme.colors.card }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {familyMembers.map((member) => (
+        {effectiveMembers.length > 0 && (
+          <View style={[styles.membersContainer, { backgroundColor: theme.colors.card }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {effectiveMembers.map((member) => (
               <TouchableOpacity
                 key={member.id}
                 style={[
@@ -79,12 +111,36 @@ export default function VaccinationsScreen() {
                   {member.name}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {selectedMember && (
           <>
+            {/* Vaccination Status Banner */}
+            <View style={[
+              styles.statusBanner, 
+              { backgroundColor: selectedMember.isFullyVaccinated ? '#15803d20' : '#b4530920' }
+            ]}>
+              <Ionicons 
+                name={selectedMember.isFullyVaccinated ? "shield-checkmark" : "alert-circle"} 
+                size={24} 
+                color={selectedMember.isFullyVaccinated ? "#15803d" : "#b45309"} 
+              />
+              <View style={styles.statusTextContainer}>
+                <Text style={[
+                  styles.statusText, 
+                  { color: selectedMember.isFullyVaccinated ? "#15803d" : "#b45309" }
+                ]}>
+                  {selectedMember.isFullyVaccinated ? "Fully Vaccinated" : "Vaccination Incomplete"}
+                </Text>
+                <Text style={[styles.statusSubtext, { color: theme.colors.textSecondary }]}>
+                  {completed.length} of {filteredVaccines.length} vaccines completed
+                </Text>
+              </View>
+            </View>
+
             {/* Search Bar */}
             <View style={[styles.searchContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
               <Ionicons name="search" size={20} color={theme.colors.textSecondary} style={styles.searchIcon} />
@@ -182,10 +238,11 @@ export default function VaccinationsScreen() {
           </>
         )}
 
-        {familyMembers.length === 0 && (
+        {!selectedMember && (
           <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={64} color={theme.colors.textTertiary} />
-            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No family members added yet</Text>
+            <Ionicons name="person-outline" size={64} color={theme.colors.textTertiary} />
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>Unable to load user information</Text>
+            <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>Please try logging out and back in</Text>
           </View>
         )}
       </ScrollView>
@@ -239,6 +296,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
   },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    gap: 12,
+  },
+  statusTextContainer: {
+    flex: 1,
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  statusSubtext: {
+    fontSize: 12,
+  },
   memberTab: {
     alignItems: 'center',
     marginHorizontal: 8,
@@ -247,6 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#f5f5f5',
     minWidth: 80,
+    borderWidth: 2,
   },
   memberTabActive: {
     backgroundColor: '#6366f1',
@@ -380,5 +459,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
