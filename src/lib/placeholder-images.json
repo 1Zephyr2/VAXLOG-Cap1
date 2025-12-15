@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "avatar-julian",
+      "description": "Avatar for Julian Doe",
+      "imageUrl": "https://images.unsplash.com/photo-1583195763986-0231686dcd43?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjI4NTg1MjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "avatar-ryan",
+      "description": "Avatar for Ryan Doe",
+      "imageUrl": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjaGlsZCUyMHBvcnRyYWl0fGVufDB8fHx8MTc2Mjg1MDAyOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "child portrait"
+    },
+    {
+      "id": "avatar-elena",
+      "description": "Avatar for Elena Doe",
+      "imageUrl": "https://images.unsplash.com/photo-1592621385612-4d7129426394?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MjgwMDA3M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "avatar-user",
+      "description": "Avatar for the main user",
+      "imageUrl": "https://images.unsplash.com/photo-1598625873873-52f9aefd7d9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzYyODY1MTk3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "avatar-baby",
+      "description": "Avatar for a baby",
+      "imageUrl": "https://images.unsplash.com/photo-1552788960-65fcafe071a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxiYWJ5JTIwZmFjZXxlbnwwfHx8fDE3NjI4Nzg0MDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "baby face"
+    }
+  ]
+}
