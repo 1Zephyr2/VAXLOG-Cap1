@@ -19,6 +19,7 @@ import CreateAccountScreen from './src/screens/auth/CreateAccountScreen';
 import DashboardScreen from './src/screens/app/DashboardScreen';
 import FamilyScreen from './src/screens/app/FamilyScreen';
 import VaccinationsScreen from './src/screens/app/VaccinationsScreen';
+import AppointmentsScreen from './src/screens/app/AppointmentsScreen';
 import CalendarScreen from './src/screens/app/CalendarScreen';
 import SettingsScreen from './src/screens/app/SettingsScreen';
 import NotificationsScreen from './src/screens/app/NotificationsScreen';
@@ -32,6 +33,7 @@ import StaffDashboardScreen from './src/screens/staff/StaffDashboardScreen';
 import StaffProfileScreen from './src/screens/staff/StaffProfileScreen';
 import PatientManagementScreen from './src/screens/staff/PatientManagementScreen';
 import AppointmentSchedulingScreen from './src/screens/staff/AppointmentSchedulingScreen';
+import AppointmentsListScreen from './src/screens/staff/AppointmentsListScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -84,7 +86,7 @@ function MainTabs() {
         />
         <Tab.Screen 
           name="Appointments" 
-          component={AppointmentSchedulingScreen}
+          component={AppointmentsListScreen}
           options={{ title: 'Appointments' }}
         />
         <Tab.Screen name="Settings" component={SettingsScreen} />
@@ -105,7 +107,7 @@ function MainTabs() {
             iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Vaccinations') {
             iconName = focused ? 'medical' : 'medical-outline';
-          } else if (route.name === 'Calendar') {
+          } else if (route.name === 'Appointments') {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Settings') {
             iconName = focused ? 'settings' : 'settings-outline';
@@ -125,7 +127,7 @@ function MainTabs() {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Family" component={FamilyScreen} />
       <Tab.Screen name="Vaccinations" component={VaccinationsScreen} />
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
+      <Tab.Screen name="Appointments" component={AppointmentsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

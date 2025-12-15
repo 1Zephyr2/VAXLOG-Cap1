@@ -19,6 +19,7 @@ import { useStaffPatients } from '../../context/staff-patients-context';
 import { useAppointments } from '../../context/appointments-context';
 import { useNotifications } from '../../context/notifications-context';
 import { FamilyMember } from '../../lib/data';
+import { format } from 'date-fns';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
 
@@ -35,6 +36,11 @@ export default function StaffDashboardScreen({ navigation }: any) {
   const [expandedFamilies, setExpandedFamilies] = useState<Set<string>>(new Set());
   const [showFullyVaccinatedModal, setShowFullyVaccinatedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
+
+  // Get pending checkup requests
+  const pendingCheckupRequests = React.useMemo(() => {
+    return appointments.filter(apt => apt.appointmentType === 'checkup' && apt.status === 'pending').slice(0, 5);
+  }, [appointments]);
 
   // Staff should not see patient family members - they need their own patient management system
   // For now, show empty state since there's no patient assignment system yet
@@ -215,6 +221,32 @@ export default function StaffDashboardScreen({ navigation }: any) {
         </View>
 
 
+
+        {/* Pending Checkup Requests */}
+        {pendingCheckupRequests.length > 0 && (
+          <View style={[styles.section, { marginBottom: 16 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Pending Checkup Requests</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
+                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            {pendingCheckupRequests.map((apt) => (
+              <TouchableOpacity
+                key={apt.id}
+                style={[styles.checkupRequestCard, { backgroundColor: theme.colors.warning + '15', borderLeftColor: theme.colors.warning }]}
+                onPress={() => navigation.navigate('Appointments')}
+              >
+                <Ionicons name="time-outline" size={18} color={theme.colors.warning} style={{ marginRight: 12 }} />
+                <View style={styles.requestInfo}>
+                  <Text style={[styles.requestTitle, { color: theme.colors.text }]}>{apt.patientName}</Text>
+                  <Text style={[styles.requestReason, { color: theme.colors.textSecondary }]}>{apt.reasonForCheckup}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Recent Activity */}
         <View style={[styles.section, { marginBottom: 32 }]}>
@@ -728,5 +760,29 @@ const styles = StyleSheet.create({
   },
   pendingIcon: {
     marginLeft: 8,
+  },
+  checkupRequestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+  },
+  requestInfo: {
+    flex: 1,
+  },
+  requestTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  requestReason: {
+    fontSize: 12,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

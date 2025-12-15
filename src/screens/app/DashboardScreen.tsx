@@ -16,6 +16,7 @@ import { useFamily } from '../../context/family-context';
 import { useAuth } from '../../context/auth-context';
 import { useTheme } from '../../context/theme-context';
 import { useNotifications } from '../../context/notifications-context';
+import { useAppointments } from '../../context/appointments-context';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 0;
@@ -25,12 +26,21 @@ export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { unreadCount } = useNotifications();
+  const { appointments } = useAppointments();
   const mainUser = familyMembers.find((m) => m.relationship === 'Me');
   const [showDoseModal, setShowDoseModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [clearedActivities, setClearedActivities] = useState(false);
+
+  // Get pending and scheduled checkup appointments
+  const checkupAppointments = useMemo(() => {
+    return appointments.filter(apt => apt.appointmentType === 'checkup' && (apt.status === 'pending' || apt.status === 'scheduled'));
+  }, [appointments]);
+
+  const pendingCheckups = checkupAppointments.filter(apt => apt.status === 'pending');
+  const scheduledCheckups = checkupAppointments.filter(apt => apt.status === 'scheduled').slice(0, 3);
 
   const nextDoseMember = [...familyMembers]
     .filter((m) => m.nextDose)
@@ -241,6 +251,52 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
               <Ionicons name="chevron-forward" size={24} color="rgba(255, 255, 255, 0.8)" />
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Checkup Appointments */}
+        {checkupAppointments.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Checkup Appointments</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
+                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            {pendingCheckups.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.appointmentSubtitle, { color: theme.colors.warning }]}>
+                  {pendingCheckups.length} Pending
+                </Text>
+                {pendingCheckups.map((apt) => (
+                  <View key={apt.id} style={[styles.appointmentCard, { backgroundColor: theme.colors.warning + '15', borderLeftColor: theme.colors.warning }]}>
+                    <Ionicons name="time-outline" size={18} color={theme.colors.warning} />
+                    <View style={styles.appointmentInfo}>
+                      <Text style={[styles.appointmentTitle, { color: theme.colors.text }]}>{apt.reasonForCheckup}</Text>
+                      <Text style={[styles.appointmentStatus, { color: theme.colors.warning }]}>Awaiting Staff Scheduling</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+            {scheduledCheckups.length > 0 && (
+              <View>
+                <Text style={[styles.appointmentSubtitle, { color: theme.colors.success }]}>
+                  {scheduledCheckups.length} Scheduled
+                </Text>
+                {scheduledCheckups.map((apt) => (
+                  <View key={apt.id} style={[styles.appointmentCard, { backgroundColor: theme.colors.success + '15', borderLeftColor: theme.colors.success }]}>
+                    <Ionicons name="calendar-outline" size={18} color={theme.colors.success} />
+                    <View style={styles.appointmentInfo}>
+                      <Text style={[styles.appointmentTitle, { color: theme.colors.text }]}>{apt.reasonForCheckup}</Text>
+                      <Text style={[styles.appointmentStatus, { color: theme.colors.success }]}>
+                        {apt.date && format(new Date(apt.date), 'MMM d, yyyy')} at {apt.time}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -1109,5 +1165,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#059669',
     fontStyle: 'italic',
+  },
+  appointmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    gap: 12,
+  },
+  appointmentInfo: {
+    flex: 1,
+  },
+  appointmentTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  appointmentStatus: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  appointmentSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

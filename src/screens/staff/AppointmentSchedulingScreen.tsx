@@ -175,8 +175,9 @@ export default function AppointmentSchedulingScreen({ navigation }: any) {
       await addAppointment(newAppointment);
     
       // Add vaccine to patient's vaccine history as "Upcoming"
+      const currentHistory = patient.vaccineHistory || [];
       const updatedVaccineHistory = [
-        ...patient.vaccineHistory,
+        ...currentHistory,
         {
           name: selectedVaccine,
           dose: 'Dose 1',

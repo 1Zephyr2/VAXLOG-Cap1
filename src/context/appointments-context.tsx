@@ -7,10 +7,14 @@ export type Appointment = {
   id: string;
   patientId: string;
   patientName: string;
-  vaccine: string;
-  time: string;
-  date: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  appointmentType: 'vaccination' | 'checkup';
+  vaccine?: string;
+  reasonForCheckup?: string;
+  time?: string;
+  date?: string;
+  status: 'pending' | 'scheduled' | 'completed' | 'cancelled';
+  bookedByStaff?: boolean;
+  userId?: string;
 };
 
 type AppointmentsContextType = {
@@ -19,6 +23,7 @@ type AppointmentsContextType = {
   updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => Promise<void>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
   completeAppointment: (appointmentId: string) => Promise<void>;
+  deleteAppointment: (appointmentId: string) => Promise<void>;
   loadAppointments: () => Promise<void>;
 };
 
@@ -117,8 +122,12 @@ export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      await deleteDoc(doc(db, 'appointments', appointmentId));
-      setAppointments(appointments.filter(apt => apt.id !== appointmentId));
+      await updateDoc(doc(db, 'appointments', appointmentId), { status: 'cancelled' });
+      setAppointments(
+        appointments.map(apt =>
+          apt.id === appointmentId ? { ...apt, status: 'cancelled' } : apt
+        )
+      );
     } catch (error) {
       console.error('Error canceling appointment:', error);
       throw error;
@@ -129,6 +138,22 @@ export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
     await updateAppointment(appointmentId, { status: 'completed' });
   };
 
+  const deleteAppointment = async (appointmentId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to delete appointments');
+    }
+
+    try {
+      await deleteDoc(doc(db, 'appointments', appointmentId));
+      setAppointments(
+        appointments.filter(apt => apt.id !== appointmentId)
+      );
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      throw error;
+    }
+  };
+
   return (
     <AppointmentsContext.Provider
       value={{
@@ -137,6 +162,7 @@ export const AppointmentsProvider = ({ children }: { children: ReactNode }) => {
         updateAppointment,
         cancelAppointment,
         completeAppointment,
+        deleteAppointment,
         loadAppointments,
       }}
     >
