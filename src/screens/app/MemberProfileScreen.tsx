@@ -120,15 +120,11 @@ export default function MemberProfileScreen({ route, navigation }: any) {
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={[styles.profileHeader, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-          {member.avatarUrl ? (
-            <Image source={{ uri: member.avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>
-                {member.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Text style={styles.avatarText}>
+              {member.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+            </Text>
+          </View>
           <Text style={[styles.name, { color: theme.colors.text }]}>{member.name}</Text>
           <Text style={[styles.relationship, { color: theme.colors.textSecondary }]}>{member.relationship}</Text>
           

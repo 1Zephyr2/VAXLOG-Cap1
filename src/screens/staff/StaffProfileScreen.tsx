@@ -90,7 +90,11 @@ export default function StaffProfileScreen({ navigation }: any) {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Profile Photo Section */}
         <View style={[styles.profilePhotoSection, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-          <Image source={{ uri: user?.avatarUrl || 'https://via.placeholder.com/120' }} style={styles.avatar} />
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Text style={styles.avatarText}>
+              {user?.name?.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('') || 'U'}
+            </Text>
+          </View>
           {isEditing && (
             <TouchableOpacity style={[styles.changePhotoButton, { backgroundColor: theme.colors.primary }]}>
               <Ionicons name="camera" size={20} color="#fff" />
@@ -282,6 +286,16 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 48,
+    fontWeight: 'bold',
   },
   changePhotoButton: {
     flexDirection: 'row',

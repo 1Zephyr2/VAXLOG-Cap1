@@ -658,10 +658,11 @@ export default function PatientManagementScreen({ navigation }: any) {
                 style={[styles.familyCardContainer, { backgroundColor: theme.colors.card }]}
               >
                 <View style={styles.singlePatientContainer}>
-                  <Image 
-                    source={{ uri: member.avatarUrl }}
-                    style={styles.singlePatientAvatar}
-                  />
+                  <View style={[styles.singlePatientAvatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarText}>
+                      {member.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                    </Text>
+                  </View>
                   <View style={styles.singlePatientInfo}>
                     <View style={styles.singlePatientHeader}>
                       <Text style={[styles.singlePatientName, { color: theme.colors.text }]}>
@@ -821,10 +822,11 @@ export default function PatientManagementScreen({ navigation }: any) {
                             }
                           ]}
                         >
-                          <Image 
-                            source={{ uri: member.avatarUrl }}
-                            style={styles.memberAvatar}
-                          />
+                          <View style={[styles.memberAvatar, styles.avatarPlaceholder]}>
+                            <Text style={styles.avatarText}>
+                              {member.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                            </Text>
+                          </View>
                           <View style={styles.memberInfo}>
                             <View style={styles.memberNameRow}>
                               {isOwner && (
@@ -1117,10 +1119,11 @@ export default function PatientManagementScreen({ navigation }: any) {
               {selectedPatientDetails && (
                 <>
                   <View style={styles.detailsAvatarSection}>
-                    <Image 
-                      source={{ uri: selectedPatientDetails.avatarUrl }}
-                      style={styles.detailsAvatar}
-                    />
+                    <View style={[styles.detailsAvatar, styles.avatarPlaceholder]}>
+                      <Text style={styles.avatarText}>
+                        {selectedPatientDetails.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                      </Text>
+                    </View>
                     <Text style={[styles.detailsName, { color: theme.colors.text }]}>
                       {selectedPatientDetails.name}
                     </Text>
@@ -1386,7 +1389,11 @@ export default function PatientManagementScreen({ navigation }: any) {
                       }
                     }}
                   >
-                    <Image source={{ uri: patient.avatarUrl }} style={styles.patientLinkAvatar} />
+                    <View style={[styles.patientLinkAvatar, styles.avatarPlaceholder]}>
+                      <Text style={styles.avatarText}>
+                        {patient.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                      </Text>
+                    </View>
                     <View style={styles.patientLinkInfo}>
                       <Text style={[styles.patientLinkName, { color: theme.colors.text }]}>
                         {patient.name}
@@ -1711,6 +1718,16 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#e5e5e5',
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   singlePatientInfo: {
     flex: 1,

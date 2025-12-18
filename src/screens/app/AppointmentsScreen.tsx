@@ -311,13 +311,9 @@ export default function AppointmentsScreen() {
                 ]}
                 onPress={() => setSelectedMemberId(member.id)}
               >
-                {member.avatarUrl ? (
-                  <Image source={{ uri: member.avatarUrl }} style={styles.memberAvatar} />
-                ) : (
-                  <View style={[styles.memberAvatar, styles.avatarPlaceholder]}>
-                    <Text style={styles.avatarText}>{member.name.charAt(0).toUpperCase()}</Text>
-                  </View>
-                )}
+                <View style={[styles.memberAvatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarText}>{member.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}</Text>
+                </View>
                 <Text
                   style={[
                     styles.memberName,

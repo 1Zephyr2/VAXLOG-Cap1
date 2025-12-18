@@ -154,10 +154,11 @@ export default function DashboardScreen({ navigation }: any) {
             style={styles.avatarContainer}
             onPress={() => navigation.navigate('EditProfile')}
           >
-            <Image 
-              source={{ uri: user?.avatarUrl || 'https://via.placeholder.com/150' }} 
-              style={styles.avatar}
-            />
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarText}>
+                {user?.name?.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('') || 'U'}
+              </Text>
+            </View>
           </TouchableOpacity>
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: theme.colors.text }]}>Hi, {user?.name || 'User'}!</Text>
@@ -688,6 +689,16 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: '#ecfdf5',
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   userInfo: {
     flex: 1,

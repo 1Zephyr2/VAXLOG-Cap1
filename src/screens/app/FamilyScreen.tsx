@@ -59,15 +59,11 @@ export default function FamilyScreen({ navigation }: any) {
             >
               <View style={styles.mainUserContent}>
                 <View style={styles.mainAvatarContainer}>
-                  {user.avatarUrl ? (
-                    <Image source={{ uri: user.avatarUrl }} style={styles.mainAvatar} />
-                  ) : (
-                    <View style={[styles.mainAvatar, styles.avatarPlaceholder]}>
-                      <Text style={styles.mainAvatarText}>
-                        {user.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
+                  <View style={[styles.mainAvatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.mainAvatarText}>
+                      {user.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                    </Text>
+                  </View>
                   <View style={styles.crownBadge}>
                     <Ionicons name="person" size={12} color="#fff" />
                   </View>
@@ -130,15 +126,11 @@ export default function FamilyScreen({ navigation }: any) {
                   }
                 >
                   <View style={styles.avatarContainer}>
-                    {member.avatarUrl ? (
-                      <Image source={{ uri: member.avatarUrl }} style={styles.avatar} />
-                    ) : (
-                      <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                        <Text style={styles.avatarText}>
-                          {member.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
+                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                      <Text style={styles.avatarText}>
+                        {member.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.memberInfo}>

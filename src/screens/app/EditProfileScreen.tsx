@@ -152,7 +152,11 @@ export default function EditProfileScreen({ navigation }: any) {
         >
         {/* Profile Picture */}
         <View style={[styles.avatarSection, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-          <Image source={{ uri: user.avatarUrl || 'https://via.placeholder.com/150' }} style={styles.avatar} />
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Text style={styles.avatarText}>
+              {user.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+            </Text>
+          </View>
           <TouchableOpacity style={[styles.changePhotoButton, { borderColor: theme.colors.primary }]}>
             <Ionicons name="camera" size={20} color={theme.colors.primary} />
             <Text style={[styles.changePhotoText, { color: theme.colors.primary }]}>Change Photo</Text>
@@ -394,6 +398,16 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: '#e5e7eb',
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 40,
+    fontWeight: 'bold',
   },
   changePhotoButton: {
     flexDirection: 'row',

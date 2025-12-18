@@ -216,10 +216,11 @@ export default function StaffDashboardScreen({ navigation }: any) {
       <View style={[styles.header, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
         <View style={styles.headerTop}>
           <View style={styles.userSection}>
-            <Image 
-              source={{ uri: user?.avatarUrl }} 
-              style={styles.avatar}
-            />
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarText}>
+                {user?.name?.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('') || 'U'}
+              </Text>
+            </View>
             <View>
               <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>Welcome back,</Text>
               <Text style={[styles.userName, { color: theme.colors.text }]}>{user?.name}</Text>
@@ -420,7 +421,11 @@ export default function StaffDashboardScreen({ navigation }: any) {
                 style={[styles.recentPatientCard, { backgroundColor: theme.colors.card }]}
                 onPress={() => navigation.navigate('PatientManagement')}
               >
-                <Image source={{ uri: patient.avatarUrl }} style={styles.smallAvatar} />
+                <View style={[styles.smallAvatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.smallAvatarText}>
+                    {patient.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                  </Text>
+                </View>
                 <View style={styles.recentPatientInfo}>
                   <Text style={[styles.recentPatientName, { color: theme.colors.text }]}>{patient.name}</Text>
                   <Text style={[styles.recentPatientDate, { color: theme.colors.textTertiary }]}>
@@ -483,10 +488,11 @@ export default function StaffDashboardScreen({ navigation }: any) {
                 style={[styles.patientCard, { backgroundColor: theme.colors.card }]}
                 onPress={() => navigation.navigate('MemberProfile', { memberId: item.id })}
               >
-                <Image 
-                  source={{ uri: item.avatarUrl }} 
-                  style={styles.patientAvatar}
-                />
+                <View style={[styles.patientAvatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarText}>
+                    {item.name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('')}
+                  </Text>
+                </View>
                 <View style={styles.patientInfo}>
                   <Text style={[styles.patientName, { color: theme.colors.text }]}>{item.name}</Text>
                   <Text style={[styles.patientEmail, { color: theme.colors.textSecondary }]}>{item.email || 'No email'}</Text>
@@ -592,6 +598,16 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   greeting: {
     fontSize: 13,
@@ -1028,6 +1044,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+  },
+  smallAvatarText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   patientNeedInfo: {
     flex: 1,

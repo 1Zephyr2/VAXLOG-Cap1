@@ -2658,6 +2658,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     paddingHorizontal: 16,
+    maxHeight: 60,
   },
   filterTabsContent: {
     paddingVertical: 12,
@@ -2665,11 +2666,12 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterTabActive: {
     borderWidth: 0,
